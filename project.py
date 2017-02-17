@@ -1329,7 +1329,7 @@ class Project(object):
     """Perform only the local IO portion of the sync process.
        Network access is not required.
     """
-    self._InitWorkTree(force_sync=force_sync)
+    self._InitWorkTree(force_sync=force_sync, skip_config=True)
     all_refs = self.bare_ref.all
     self.CleanPublishedCache(all_refs)
     revid = self.GetRevisionId(all_refs)
@@ -2388,7 +2388,7 @@ class Project(object):
         msg = 'manifest set to %s' % self.revisionExpr
         self.bare_git.symbolic_ref('-m', msg, ref, dst)
 
-  def _CheckDirReference(self, srcdir, destdir, share_refs):
+  def _CheckDirReference(self, srcdir, destdir, share_refs, skip_config=False):
     symlink_files = self.shareable_files[:]
     symlink_dirs = self.shareable_dirs[:]
     if share_refs:
@@ -2405,6 +2405,8 @@ class Project(object):
 
         # Fail if the links are pointing to the wrong place
         if src != dst:
+          if skip_config and name == 'config':
+            continue
           raise GitError('--force-sync not enabled; cannot overwrite a local '
                          'work tree. If you\'re comfortable with the '
                          'possibility of losing the work tree\'s git metadata,'
@@ -2469,7 +2471,7 @@ class Project(object):
         else:
           raise
 
-  def _InitWorkTree(self, force_sync=False):
+  def _InitWorkTree(self, force_sync=False, skip_config=False):
     dotgit = os.path.join(self.worktree, '.git')
     init_dotgit = not os.path.exists(dotgit)
     try:
@@ -2479,7 +2481,7 @@ class Project(object):
                               copy_all=False)
 
       try:
-        self._CheckDirReference(self.gitdir, dotgit, share_refs=True)
+        self._CheckDirReference(self.gitdir, dotgit, share_refs=True, skip_config=skip_config)
       except GitError as e:
         if force_sync:
           try:
